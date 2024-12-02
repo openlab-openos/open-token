@@ -733,7 +733,7 @@ async fn command_create_account(
             .create_auxiliary_token_account_with_extension_space(&**signer, &owner, extensions)
             .await
     }?;
-
+  
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
