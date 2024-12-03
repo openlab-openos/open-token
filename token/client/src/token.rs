@@ -598,7 +598,6 @@ where
         let transaction = self
             .construct_tx(token_instructions, signing_keypairs)
             .await?;
-
         self.client
             .send_transaction(&transaction)
             .await
