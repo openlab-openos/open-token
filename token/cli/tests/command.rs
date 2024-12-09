@@ -46,6 +46,7 @@ use {
         },
         token::Token,
     },
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
     std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
     tempfile::NamedTempFile,
@@ -131,6 +132,7 @@ async fn main() {
         async_trial!(group_member_pointer, test_validator, payer),
         async_trial!(transfer_hook, test_validator, payer),
         async_trial!(metadata, test_validator, payer),
+        async_trial!(group, test_validator, payer),
         async_trial!(confidential_transfer_with_fee, test_validator, payer),
         // GC messes with every other test, so have it on its own test validator
         async_trial!(gc, gc_test_validator, gc_payer),
@@ -3787,4 +3789,147 @@ async fn metadata(test_validator: &TestValidator, payer: &Keypair) {
         fetched_metadata.update_authority,
         Some(mint).try_into().unwrap()
     );
+}
+
+async fn group(test_validator: &TestValidator, payer: &Keypair) {
+    let program_id = spl_token_2022::id();
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let max_size = 10;
+
+    // Create token
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--enable-group",
+        ],
+    )
+    .await;
+
+    let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+    let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+
+    // Initialize the group
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::InitializeGroup.into(),
+            &mint.to_string(),
+            &max_size.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let extension = mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(
+        extension.update_authority,
+        Some(payer.pubkey()).try_into().unwrap()
+    );
+    assert_eq!(extension.max_size, max_size.into());
+
+    let extension_pointer = mint_state.get_extension::<GroupPointer>().unwrap();
+    assert_eq!(
+        extension_pointer.group_address,
+        Some(mint).try_into().unwrap()
+    );
+
+    let new_max_size = 12;
+
+    // Update token-group max-size
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::UpdateGroupMaxSize.into(),
+            &mint.to_string(),
+            &new_max_size.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+
+    let updated_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let updated_extension = updated_mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(updated_extension.max_size, new_max_size.into());
+
+    // Create member token
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--enable-member",
+        ],
+    )
+    .await
+    .unwrap();
+
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let member_mint =
+        Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+
+    // Initialize it as a member of the group
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::InitializeMember.into(),
+            &member_mint.to_string(),
+            &mint.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let group_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = group_mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(u32::from(extension.size), 1);
+
+    let account = config.rpc_client.get_account(&member_mint).await.unwrap();
+    let member_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = member_mint_state
+        .get_extension::<TokenGroupMember>()
+        .unwrap();
+    assert_eq!(extension.group, mint);
+    assert_eq!(extension.mint, member_mint);
+    assert_eq!(u32::from(extension.member_number), 1);
+
+    // update authority
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::Authorize.into(),
+            &mint.to_string(),
+            "group",
+            &mint.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(extension.update_authority, Some(mint).try_into().unwrap());
 }

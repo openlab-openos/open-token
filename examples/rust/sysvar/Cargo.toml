@@ -13,11 +13,11 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "1.17.6"
+solana-program = ">=1.17.17,<=2"
 
 [dev-dependencies]
-solana-program-test = "1.17.6"
-solana-sdk = "1.17.6"
+solana-program-test = { git = 'https://github.com/openlab-openos/openos/',package = "solana-program-test" }
+solana-sdk = ">=1.17.17,<=2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -107,6 +107,9 @@ pub enum CommandName {
     SetTransferHook,
     InitializeMetadata,
     UpdateMetadata,
+    InitializeGroup,
+    UpdateGroupMaxSize,
+    InitializeMember,
     UpdateConfidentialTransferSettings,
     ConfigureConfidentialTransferAccount,
     EnableConfidentialCredits,
@@ -188,6 +191,7 @@ pub enum CliAuthorityType {
     Metadata,
     GroupPointer,
     GroupMemberPointer,
+    Group,
 }
 impl TryFrom<CliAuthorityType> for AuthorityType {
     type Error = Error;
@@ -215,6 +219,9 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
             }
             CliAuthorityType::GroupPointer => Ok(AuthorityType::GroupPointer),
             CliAuthorityType::GroupMemberPointer => Ok(AuthorityType::GroupMemberPointer),
+            CliAuthorityType::Group => {
+                Err("Group update authority does not map to a token authority type".into())
+            }
         }
     }
 }
@@ -777,8 +784,6 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("enable_member")
                         .long("enable-member")
-                        .conflicts_with("group_address")
-                        .conflicts_with("enable_group")
                         .conflicts_with("member_address")
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
@@ -961,6 +966,132 @@ pub fn app<'a, 'b>(
                 .nonce_args(true)
                 .arg(transfer_lamports_arg())
                 .offline_args_config(&SignOnlyNeedsTransferLamports{}),
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::InitializeGroup.into())
+                .about("Initialize group extension on a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the group account."),
+                )
+                .arg(
+                        Arg::with_name("max_size")
+                        .validator(is_amount)
+                        .value_name("MAX_SIZE")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The number of members in the group."),
+                    )
+                .arg(
+                    Arg::with_name("mint_authority")
+                        .long("mint-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the mint authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateGroupMaxSize.into())
+                .about("Updates the maximum number of members for a group.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the group account."),
+                )
+                .arg(
+                        Arg::with_name("new_max_size")
+                        .validator(is_amount)
+                        .value_name("NEW_MAX_SIZE")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The number of members in the group."),
+                    )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("SIGNER")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::InitializeMember.into())
+                .about("Initialize group member extension on a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the member account."),
+                )
+                .arg(
+                    Arg::with_name("group_token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The token address of the group account that the token will join."),
+                )
+                .arg(
+                    Arg::with_name("mint_authority")
+                        .long("mint-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the mint authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("group_update_authority")
+                        .long("group-update-authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair address."
+                        ),
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())

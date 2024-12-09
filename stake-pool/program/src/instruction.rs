@@ -8,14 +8,17 @@ use {
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         inline_mpl_token_metadata::{self, pda::find_metadata_account},
-        state::{Fee, FeeType, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
         pubkey::Pubkey,
-        stake, system_program, sysvar,
+        stake,
+        stake_history::Epoch,
+        system_program, sysvar,
     },
     std::num::NonZeroU32,
 };
@@ -1363,6 +1366,10 @@ pub fn decrease_additional_validator_stake_with_vote(
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake
 /// account balances)
+#[deprecated(
+    since = "1.1.0",
+    note = "please use `update_validator_list_balance_chunk`"
+)]
 pub fn update_validator_list_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1421,6 +1428,115 @@ pub fn update_validator_list_balance(
         .try_to_vec()
         .unwrap(),
     }
+}
+
+/// Creates an `UpdateValidatorListBalance` instruction (update validator stake
+/// account balances) to update `validator_list[start_index..start_index +
+/// len]`.
+///
+/// Returns `Err(ProgramError::InvalidInstructionData)` if:
+/// - `start_index..start_index + len` is out of bounds for
+///   `validator_list.validators`
+pub fn update_validator_list_balance_chunk(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list_address: &Pubkey,
+    reserve_stake: &Pubkey,
+    validator_list: &ValidatorList,
+    len: usize,
+    start_index: usize,
+    no_merge: bool,
+) -> Result<Instruction, ProgramError> {
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list_address, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    let validator_list_subslice = validator_list
+        .validators
+        .get(start_index..start_index.saturating_add(len))
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    accounts.extend(validator_list_subslice.iter().flat_map(
+        |ValidatorStakeInfo {
+             vote_account_address,
+             validator_seed_suffix,
+             transient_seed_suffix,
+             ..
+         }| {
+            let (validator_stake_account, _) = find_stake_program_address(
+                program_id,
+                vote_account_address,
+                stake_pool,
+                NonZeroU32::new((*validator_seed_suffix).into()),
+            );
+            let (transient_stake_account, _) = find_transient_stake_program_address(
+                program_id,
+                vote_account_address,
+                stake_pool,
+                (*transient_seed_suffix).into(),
+            );
+            [
+                AccountMeta::new(validator_stake_account, false),
+                AccountMeta::new(transient_stake_account, false),
+            ]
+        },
+    ));
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::UpdateValidatorListBalance {
+            start_index: start_index.try_into().unwrap(),
+            no_merge,
+        }
+        .try_to_vec()
+        .unwrap(),
+    })
+}
+
+/// Creates `UpdateValidatorListBalance` instruction (update validator stake
+/// account balances)
+///
+/// Returns `None` if all validators in the given chunk has already been updated
+/// for this epoch, returns the required instruction otherwise.
+pub fn update_stale_validator_list_balance_chunk(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list_address: &Pubkey,
+    reserve_stake: &Pubkey,
+    validator_list: &ValidatorList,
+    len: usize,
+    start_index: usize,
+    no_merge: bool,
+    current_epoch: Epoch,
+) -> Result<Option<Instruction>, ProgramError> {
+    let validator_list_subslice = validator_list
+        .validators
+        .get(start_index..start_index.saturating_add(len))
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    if validator_list_subslice.iter().all(|info| {
+        let last_update_epoch: u64 = info.last_update_epoch.into();
+        last_update_epoch >= current_epoch
+    }) {
+        return Ok(None);
+    }
+    update_validator_list_balance_chunk(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        validator_list_address,
+        reserve_stake,
+        validator_list,
+        len,
+        start_index,
+        no_merge,
+    )
+    .map(Some)
 }
 
 /// Creates `UpdateStakePoolBalance` instruction (pool balance from the stake
@@ -1482,31 +1598,88 @@ pub fn update_stake_pool(
     stake_pool_address: &Pubkey,
     no_merge: bool,
 ) -> (Vec<Instruction>, Vec<Instruction>) {
-    let vote_accounts: Vec<Pubkey> = validator_list
-        .validators
-        .iter()
-        .map(|item| item.vote_account_address)
-        .collect();
-
     let (withdraw_authority, _) =
         find_withdraw_authority_program_address(program_id, stake_pool_address);
 
-    let mut update_list_instructions: Vec<Instruction> = vec![];
-    let mut start_index = 0;
-    for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
-        update_list_instructions.push(update_validator_list_balance(
+    let update_list_instructions = validator_list
+        .validators
+        .chunks(MAX_VALIDATORS_TO_UPDATE)
+        .enumerate()
+        .map(|(i, chunk)| {
+            // unwrap-safety: chunk len and offset are derived
+            update_validator_list_balance_chunk(
+                program_id,
+                stake_pool_address,
+                &withdraw_authority,
+                &stake_pool.validator_list,
+                &stake_pool.reserve_stake,
+                validator_list,
+                chunk.len(),
+                i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
+                no_merge,
+            )
+            .unwrap()
+        })
+        .collect();
+
+    let final_instructions = vec![
+        update_stake_pool_balance(
             program_id,
             stake_pool_address,
             &withdraw_authority,
             &stake_pool.validator_list,
             &stake_pool.reserve_stake,
-            validator_list,
-            accounts_chunk,
-            start_index,
-            no_merge,
-        ));
-        start_index = start_index.saturating_add(MAX_VALIDATORS_TO_UPDATE as u32);
-    }
+            &stake_pool.manager_fee_account,
+            &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
+        ),
+        cleanup_removed_validator_entries(
+            program_id,
+            stake_pool_address,
+            &stake_pool.validator_list,
+        ),
+    ];
+    (update_list_instructions, final_instructions)
+}
+
+/// Creates the `UpdateValidatorListBalance` instructions only for validators on
+/// `validator_list` that have not been updated for this epoch, and the
+/// `UpdateStakePoolBalance` instruction for fully updating the stake pool.
+///
+/// Basically same as [`update_stake_pool`], but skips validators that are
+/// already updated for this epoch
+pub fn update_stale_stake_pool(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    no_merge: bool,
+    current_epoch: Epoch,
+) -> (Vec<Instruction>, Vec<Instruction>) {
+    let (withdraw_authority, _) =
+        find_withdraw_authority_program_address(program_id, stake_pool_address);
+
+    let update_list_instructions = validator_list
+        .validators
+        .chunks(MAX_VALIDATORS_TO_UPDATE)
+        .enumerate()
+        .filter_map(|(i, chunk)| {
+            // unwrap-safety: chunk len and offset are derived
+            update_stale_validator_list_balance_chunk(
+                program_id,
+                stake_pool_address,
+                &withdraw_authority,
+                &stake_pool.validator_list,
+                &stake_pool.reserve_stake,
+                validator_list,
+                chunk.len(),
+                i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
+                no_merge,
+                current_epoch,
+            )
+            .unwrap()
+        })
+        .collect();
 
     let final_instructions = vec![
         update_stake_pool_balance(

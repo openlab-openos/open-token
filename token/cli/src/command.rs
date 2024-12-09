@@ -70,6 +70,7 @@ use {
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ExtensionInitializationParams, Token},
     },
+    spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
@@ -596,6 +597,94 @@ async fn command_update_metadata(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn command_initialize_group(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    mint_authority: Pubkey,
+    update_authority: Pubkey,
+    max_size: u32,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .token_group_initialize_with_rent_transfer(
+            &config.fee_payer()?.pubkey(),
+            &mint_authority,
+            &update_authority,
+            max_size,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_update_group_max_size(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    update_authority: Pubkey,
+    new_max_size: u32,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .token_group_update_max_size(&update_authority, new_max_size, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_initialize_member(
+    config: &Config<'_>,
+    member_token_pubkey: Pubkey,
+    mint_authority: Pubkey,
+    group_token_pubkey: Pubkey,
+    group_update_authority: Pubkey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &member_token_pubkey, None)?;
+
+    let res = token
+        .token_group_initialize_member_with_rent_transfer(
+            &config.fee_payer()?.pubkey(),
+            &mint_authority,
+            &group_token_pubkey,
+            &group_update_authority,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_set_transfer_fee(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -733,7 +822,7 @@ async fn command_create_account(
             .create_auxiliary_token_account_with_extension_space(&**signer, &owner, extensions)
             .await
     }?;
-  
+
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
         TransactionReturnData::CliSignature(signature) => {
@@ -928,6 +1017,13 @@ async fn command_authorize(
                         ))
                     }
                 }
+                CliAuthorityType::Group => {
+                    if let Ok(extension) = mint.get_extension::<TokenGroup>() {
+                        Ok(Option::<Pubkey>::from(extension.update_authority))
+                    } else {
+                        Err(format!("Mint `{}` does not support token groups", account))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -968,6 +1064,7 @@ async fn command_authorize(
                 | CliAuthorityType::MetadataPointer
                 | CliAuthorityType::Metadata
                 | CliAuthorityType::GroupPointer
+                | CliAuthorityType::Group
                 | CliAuthorityType::GroupMemberPointer => Err(format!(
                     "Authority type `{auth_str}` not supported for SPL Token accounts",
                 )),
@@ -1019,20 +1116,28 @@ async fn command_authorize(
         ),
     );
 
-    let res = if let CliAuthorityType::Metadata = authority_type {
-        token
-            .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
-            .await?
-    } else {
-        token
-            .set_authority(
-                &account,
-                &authority,
-                new_authority.as_ref(),
-                authority_type.try_into()?,
-                &bulk_signers,
-            )
-            .await?
+    let res = match authority_type {
+        CliAuthorityType::Metadata => {
+            token
+                .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
+                .await?
+        }
+        CliAuthorityType::Group => {
+            token
+                .token_group_update_authority(&authority, new_authority, &bulk_signers)
+                .await?
+        }
+        _ => {
+            token
+                .set_authority(
+                    &account,
+                    &authority,
+                    new_authority.as_ref(),
+                    authority_type.try_into()?,
+                    &bulk_signers,
+                )
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -2876,7 +2981,11 @@ async fn command_configure_confidential_transfer_account(
     // Reallocation (if needed)
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if !existing_extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
-        existing_extensions.push(ExtensionType::ConfidentialTransferAccount);
+        let mut extra_extensions = vec![ExtensionType::ConfidentialTransferAccount];
+        if existing_extensions.contains(&ExtensionType::TransferFeeAmount) {
+            extra_extensions.push(ExtensionType::ConfidentialTransferFeeAmount);
+        }
+        existing_extensions.extend_from_slice(&extra_extensions);
         let needed_account_len =
             ExtensionType::try_calculate_account_len::<Account>(&existing_extensions)?;
         if needed_account_len > current_account_len {
@@ -2884,7 +2993,7 @@ async fn command_configure_confidential_transfer_account(
                 .reallocate(
                     &token_account_address,
                     &owner,
-                    &[ExtensionType::ConfidentialTransferAccount],
+                    &extra_extensions,
                     &bulk_signers,
                 )
                 .await?;
@@ -3447,6 +3556,73 @@ pub async fn process_command<'a>(
                 field,
                 value,
                 transfer_lamports,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::InitializeGroup, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let max_size = value_t_or_exit!(arg_matches, "max_size", u32);
+            let (mint_authority_signer, mint_authority) =
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+            let update_authority =
+                config.pubkey_or_default(arg_matches, "update_authority", &mut wallet_manager)?;
+            let bulk_signers = vec![mint_authority_signer];
+
+            command_initialize_group(
+                config,
+                token_pubkey,
+                mint_authority,
+                update_authority,
+                max_size,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::UpdateGroupMaxSize, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u32);
+            let (update_authority_signer, update_authority) =
+                config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
+            let bulk_signers = vec![update_authority_signer];
+
+            command_update_group_max_size(
+                config,
+                token_pubkey,
+                update_authority,
+                new_max_size,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::InitializeMember, arg_matches) => {
+            let member_token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let group_token_pubkey =
+                pubkey_of_signer(arg_matches, "group_token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let (mint_authority_signer, mint_authority) =
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+            let (group_update_authority_signer, group_update_authority) = config.signer_or_default(
+                arg_matches,
+                "group_update_authority",
+                &mut wallet_manager,
+            );
+            let mut bulk_signers = vec![mint_authority_signer];
+            push_signer_with_dedup(group_update_authority_signer, &mut bulk_signers);
+
+            command_initialize_member(
+                config,
+                member_token_pubkey,
+                mint_authority,
+                group_token_pubkey,
+                group_update_authority,
                 bulk_signers,
             )
             .await
