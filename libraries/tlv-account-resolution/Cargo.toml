@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 bytemuck = { version = "1.14.1", features = ["derive"] }
 serde = { version = "1.0.196", optional = true }
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.3", path = "../program-error" }
 spl-type-length-value = { version = "0.3", path = "../type-length-value" }

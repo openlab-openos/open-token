@@ -16,7 +16,7 @@ base64 = { version = "0.21.7", optional = true }
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.1" }
 serde = { version = "1.0.196", optional = true }
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 solana-zk-token-sdk = ">=1.17.17,<=2"
 spl-program-error = { version = "0.3", path = "../program-error" }
 

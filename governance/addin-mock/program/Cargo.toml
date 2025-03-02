@@ -19,7 +19,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 serde = "1.0.196"
 serde_derive = "1.0.103"
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 spl-token = { version = "4.0", path = "../../../token/program", features = [
     "no-entrypoint",
 ] }

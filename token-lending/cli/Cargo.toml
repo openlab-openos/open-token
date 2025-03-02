@@ -15,7 +15,7 @@ solana-cli-config = ">=1.17.17,<=2"
 solana-client = ">=1.17.17,<=2"
 solana-logger = ">=1.17.17,<=2"
 solana-sdk = ">=1.17.17,<=2"
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 spl-token-lending = { version = "0.2", path="../program", features = [ "no-entrypoint" ] }
 spl-token = { version = "4.0", path="../../token/program", features = [ "no-entrypoint" ]  }
 

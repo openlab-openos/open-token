@@ -12,7 +12,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 spl-token = { version = "4.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
 
 [dev-dependencies]

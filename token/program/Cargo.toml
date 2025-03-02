@@ -18,7 +18,7 @@ bytemuck = "1.14.1"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.2"
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 thiserror = "1.0"
 
 [dev-dependencies]

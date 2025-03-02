@@ -13,7 +13,7 @@ test-sbf = []
 
 [dependencies]
 arrayref = "0.3.7"
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 spl-tlv-account-resolution = { version = "0.5" , path = "../../../libraries/tlv-account-resolution" }
 spl-token-2022 = { version = "2.0",  path = "../../program-2022", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "0.5" , path = "../interface" }

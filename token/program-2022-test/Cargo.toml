@@ -19,7 +19,7 @@ walkdir = "2"
 async-trait = "0.1"
 borsh = "0.10"
 futures-util = "0.3"
-solana-program = ">=1.17.17,<=2"
+solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 solana-program-test = ">=1.17.17,<=2"
 solana-sdk = ">=1.17.17,<=2"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
