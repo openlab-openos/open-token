@@ -16,7 +16,7 @@ solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="sol
 
 [dev-dependencies]
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

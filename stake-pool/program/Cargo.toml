@@ -32,7 +32,7 @@ bincode = "1.3.1"
 assert_matches = "1.5.0"
 proptest = "1.4"
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 solana-vote-program = ">=1.17.17,<=2"
 spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 test-case = "3.3"

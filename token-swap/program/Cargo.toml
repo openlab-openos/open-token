@@ -28,7 +28,7 @@ roots = { version = "0.0.8", optional = true }
 [dev-dependencies]
 proptest = "1.4"
 roots = "0.0.8"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 test-case = "3.3"
 
 [lib]

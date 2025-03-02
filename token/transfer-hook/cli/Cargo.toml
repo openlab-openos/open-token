@@ -16,7 +16,7 @@ solana-cli-config = ">=1.17.17,<=2"
 solana-client = ">=1.17.17,<=2"
 solana-logger = ">=1.17.17,<=2"
 solana-remote-wallet = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 spl-transfer-hook-interface = { version = "0.5", path = "../interface" }
 spl-tlv-account-resolution = { version = "0.5.1" , path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
 strum = "0.26"

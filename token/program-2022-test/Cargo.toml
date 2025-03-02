@@ -21,7 +21,7 @@ borsh = "0.10"
 futures-util = "0.3"
 solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }

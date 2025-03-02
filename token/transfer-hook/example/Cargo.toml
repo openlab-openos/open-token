@@ -21,7 +21,7 @@ spl-type-length-value = { version = "0.3" , path = "../../../libraries/type-leng
 
 [dev-dependencies]
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

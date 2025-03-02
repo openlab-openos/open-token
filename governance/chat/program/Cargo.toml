@@ -35,7 +35,7 @@ thiserror = "1.0"
 assert_matches = "1.5.0"
 proptest = "1.4"
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 spl-governance-test-sdk = { version = "0.1.4", path = "../../test-sdk" }
 spl-governance-addin-mock = { version = "0.1.4", path = "../../addin-mock/program" }
 

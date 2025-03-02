@@ -14,7 +14,7 @@ solana-clap-utils = ">=1.17.17,<=2"
 solana-cli-config = ">=1.17.17,<=2"
 solana-client = ">=1.17.17,<=2"
 solana-logger = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 spl-feature-proposal = { version = "1.0", path = "../program", features = ["no-entrypoint"] }
 
 [[bin]]

@@ -26,7 +26,7 @@ lazy_static = "1.4.0"
 proptest = "1.4"
 serial_test = "3.0.0"
 solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
