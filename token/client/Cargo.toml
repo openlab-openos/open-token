@@ -12,7 +12,7 @@ async-trait = "0.1"
 curve25519-dalek = "3.2.1"
 futures = "0.3.30"
 futures-util = "0.3"
-solana-banks-interface = { git = "https://github.com/openlab-openos/openos" ,package="solana-banks-interface " }
+solana-banks-interface = { git = "https://github.com/openlab-openos/openos" ,package="solana-banks-interface" }
 solana-cli-output = { git = "https://github.com/openlab-openos/openos" ,package="solana-cli-output" , optional = true }
 solana-program-test = { git = "https://github.com/openlab-openos/openos" ,package="solana-program-test" }
 solana-rpc-client = { git = "https://github.com/openlab-openos/openos" ,package="solana-rpc-client" }
