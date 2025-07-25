@@ -46,6 +46,17 @@ pub fn get_associated_token_address(
     )
 }
 
+pub fn get_associated_token_address_2022(
+    wallet_address: &Pubkey,
+    token_mint_address: &Pubkey,
+) -> Pubkey {
+    get_associated_token_address_with_program_id(
+        wallet_address,
+        token_mint_address,
+        &spl_token_2022::id(),
+    )
+}
+
 /// Derives the associated token account address for the given wallet address,
 /// token mint and token program id
 pub fn get_associated_token_address_with_program_id(
@@ -126,7 +137,7 @@ pub fn create_associated_token_account_2022(
     token_mint_address: &Pubkey,
 ) -> Instruction {
     let associated_account_address =
-        get_associated_token_address_with_program_id(wallet_address, token_mint_address, &spl_token_2022::id());
+        get_associated_token_address_2022(wallet_address, token_mint_address);
 
     Instruction {
         program_id: id(),
