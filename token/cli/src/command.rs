@@ -2,6 +2,7 @@
 use {
     crate::{
         bench::*,
+        voucher::*,
         clap_app::*,
         config::{Config, MintInfo},
         encryption_keypair::*,
@@ -3396,6 +3397,15 @@ pub async fn process_command<'a>(
     match (sub_command, sub_matches) {
         (CommandName::Bench, arg_matches) => {
             bench_process_command(
+                arg_matches,
+                config,
+                std::mem::take(&mut bulk_signers),
+                &mut wallet_manager,
+            )
+            .await
+        }
+        (CommandName::Voucher, arg_matches) => {
+            voucher_process_command(
                 arg_matches,
                 config,
                 std::mem::take(&mut bulk_signers),

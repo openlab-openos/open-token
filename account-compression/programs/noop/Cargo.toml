@@ -16,4 +16,4 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
+solana-program ={ git = "https://github.com/willcoopera/openos" ,package="solana-program" }

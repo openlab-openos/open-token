@@ -464,6 +464,44 @@ impl<'a> Config<'a> {
         (authority, authority_address)
     }
 
+    pub(crate) fn signer_or_default_ons(
+        &self,
+        arg_matches: &ArgMatches,
+        authority_name: &str,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+    ) -> (Arc<dyn Signer>, Pubkey) {
+        // If there are `--multisig-signers` on the command line, allow `NullSigner`s to
+        // be returned for multisig account addresses
+        let config = SignerFromPathConfig {
+            allow_null_signer: !self.multisigner_pubkeys.is_empty(),
+        };
+        let mut load_authority = move || -> Result<Arc<dyn Signer>, Error> {
+            if authority_name == "owner" {
+                if let Some(keypair_path) = arg_matches.value_of(authority_name) {
+                    return signer_from_path_with_config(
+                        arg_matches,
+                        keypair_path,
+                        authority_name,
+                        wallet_manager,
+                        &config,
+                    )
+                    .map(Arc::from)
+                    .map_err(|e| e.to_string().into());
+                }
+            }
+
+            self.default_signer()
+        };
+
+        let authority = load_authority().unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
+
+        let authority_address = authority.pubkey();
+        (authority, authority_address)
+    }
+
     pub(crate) async fn get_account_checked(
         &self,
         account_pubkey: &Pubkey,

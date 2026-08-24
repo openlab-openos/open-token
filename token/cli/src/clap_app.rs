@@ -121,6 +121,7 @@ pub enum CommandName {
     ApplyPendingBalance,
     UpdateGroupAddress,
     UpdateMemberAddress,
+    Voucher,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -543,6 +544,117 @@ impl BenchSubCommand for App<'_, '_> {
     }
 }
 
+pub(crate) trait VoucherSubCommand {
+    fn voucher_subcommand(self) -> Self;
+}
+
+impl VoucherSubCommand for App<'_, '_> {
+    fn voucher_subcommand(self) -> Self {
+        self.subcommand(
+            SubCommand::with_name("voucher")
+                .about("Voucher facilities")
+                .setting(AppSettings::InferSubcommands)
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create voucher")
+                        .arg(
+                            Arg::with_name("mint")
+                                .validator(is_pubkey)
+                                .value_name("TOKEN_MINT_ADDRESS")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Token address"),
+                        )
+                        .arg(
+                            Arg::with_name("quota")
+                                .validator(is_amount)
+                                .value_name("QUOTA")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Human quota amount per voucher, not include decimal"),
+                        )
+                        .arg(
+                            Arg::with_name("count")
+                                .validator(is_parsable::<u64>)
+                                .value_name("COUNT")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Total count of vouchers"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("redeem")
+                        .about("Redeem a voucher and transfer tokens to the user")
+                        .arg(
+                            Arg::with_name("code")
+                                .value_name("REDEEM_CODE")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Please use redeem-code to redeem."),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("withdraw")
+                        .about("Withdraw tokens from vault to owner")
+                        .arg(
+                            Arg::with_name("mint")
+                                .validator(is_pubkey)
+                                .value_name("TOKEN_MINT_ADDRESS")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Token address"),
+                        )
+                        .arg(
+                            Arg::with_name("amount")
+                                .validator(is_amount)
+                                .value_name("TOKEN_AMOUNT")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Human amount to withdraw, not include decimal"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("info")
+                        .about("Query voucher information")
+                        .arg(
+                            Arg::with_name("code")
+                                .validator(is_pubkey)
+                                .value_name("PUBLIC_KEY")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Voucher public key"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("vault")
+                        .about("Query vault information")
+                        .arg(
+                            Arg::with_name("mint")
+                                .validator(is_pubkey)
+                                .value_name("TOKEN_MINT_ADDRESS")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Token address"),
+                        )
+                        .arg(owner_address_arg()),
+                ),
+        )
+    }
+}
+
 pub fn app<'a, 'b>(
     default_decimals: &'a str,
     minimum_signers_help: &'b str,
@@ -612,6 +724,7 @@ pub fn app<'a, 'b>(
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
         .bench_subcommand()
+        .voucher_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")

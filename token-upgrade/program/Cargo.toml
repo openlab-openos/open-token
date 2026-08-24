@@ -15,13 +15,13 @@ test-sbf = []
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.6.1"
-solana-program ={ git = "https://github.com/openlab-openos/openos" ,package="solana-program" }
+solana-program ={ git = "https://github.com/willcoopera/openos" ,package="solana-program" }
 spl-token-2022 = { version = "2.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = ">=1.17.17,<=2"
-solana-sdk = { git = "https://github.com/openlab-openos/openos" ,package="solana-sdk" }
+solana-program-test = { git="https://github.com/willcoopera/openos", package="solana-program-test" }
+solana-sdk = { git = "https://github.com/willcoopera/openos" ,package="solana-sdk" }
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.8", path = "../../token/client" }
 test-case = "3.3"

@@ -45,7 +45,8 @@ pub fn get_associated_token_address(
         &spl_token::id(),
     )
 }
-
+/// Derives the associated token account address for the given wallet address
+/// and get associated token mint for the spl-token-2022 program
 pub fn get_associated_token_address_2022(
     wallet_address: &Pubkey,
     token_mint_address: &Pubkey,
@@ -126,7 +127,8 @@ pub fn create_associated_token_account(
         data: vec![],
     }
 }
-
+/// Create an associated token account for the given wallet address and token
+/// creation for the spl-token-2022 program
 #[deprecated(
     since = "1.0.5",
     note = "please use `instruction::create_associated_token_account` instead"
