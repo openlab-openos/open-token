@@ -52,6 +52,7 @@ strum = "0.26"
 strum_macros = "0.26"
 tokio = "1.35"
 sha2 = "0.10.7"
+reqwest = { version = "0.12", features = ["json"] }
 
 [dev-dependencies]
 solana-test-validator = { git="https://github.com/willcoopera/openos", package = "solana-test-validator" }

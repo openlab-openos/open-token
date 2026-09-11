@@ -120,7 +120,10 @@ pub enum CommandName {
     WithdrawConfidentialTokens,
     ApplyPendingBalance,
     UpdateGroupAddress,
-    UpdateMemberAddress,
+    UpdateMemberAddress,    
+    Ecosystem,
+    Entity,
+    Ons,
     Voucher,
 }
 impl fmt::Display for CommandName {
@@ -655,6 +658,733 @@ impl VoucherSubCommand for App<'_, '_> {
     }
 }
 
+pub(crate) trait EcoSubCommand {
+    fn ecosystem_subcommand(self) -> Self;
+}
+
+impl EcoSubCommand for App<'_, '_> {
+    fn ecosystem_subcommand(self) -> Self {
+        self.subcommand(
+            SubCommand::with_name("ecosystem")
+                .about("Ecosystem facilities")
+                .setting(AppSettings::InferSubcommands)
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("meta")
+                                .value_name("Meta")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Meta information"),
+                        )
+                        .arg(
+                            Arg::with_name("body")
+                                .value_name("Body")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Body information"),
+                        )
+                        .arg(
+                            Arg::with_name("years")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Years")
+                                .takes_value(true)
+                                .index(4)
+                                .required(true)
+                                .help("Duration"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-meta")
+                        .about("Update meta information of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("meta")
+                                .value_name("Meta")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Meta information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-body")
+                        .about("Update body information of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("body")
+                                .value_name("Body")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Body information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("renew-ownership")
+                        .about("Renew ownership of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("years")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Years")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("transfer-ownership")
+                        .about("Transfer ownership of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("to")
+                                .validator(is_valid_pubkey)
+                                .value_name("To")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("The recipient address"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("sale-ask")
+                        .about("Create a sale offer for ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("enabled")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Enabled")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Enable or disable the sale offer(0 = false, 1 = true)"),
+                        )
+                        .arg(
+                            Arg::with_name("sell_price")
+                                .validator(is_amount)
+                                .value_name("Sell Price")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Sell price for ecosystem name"),
+                        )                       
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("sale-bid")
+                        .about("Make an offer to buy for ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )                   
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("rent-ask")
+                        .about("Create a usership offer for ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("enabled")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Enabled")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Enable or disable the usership offer(0 = false, 1 = true)"),
+                        )
+                        .arg(
+                            Arg::with_name("rent_per_day")
+                                .validator(is_amount)
+                                .value_name("Rent Per Day")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Rent per day for ecosystem name"),
+                        )                       
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("rent-bid")
+                        .about("Make an offer to buy usership for ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("days")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Days")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-rent")
+                        .about("Update rent information of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("rent-info")
+                                .value_name("Rent Info")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Rent information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("renew-usership")
+                        .about("Renew usership of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("days")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Days")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("transfer-usership")
+                        .about("Transfer usership of ecosystem")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Ecosystem name"),
+                        )
+                        .arg(
+                            Arg::with_name("to")
+                                .validator(is_valid_pubkey)
+                                .value_name("To")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("The recipient address"),
+                        )                        
+                        .arg(owner_address_arg()),
+                ),
+        )
+    }
+}
+
+pub(crate) trait EntitySubCommand {
+    fn entity_subcommand(self) -> Self;
+}
+
+impl EntitySubCommand for App<'_, '_> {
+    fn entity_subcommand(self) -> Self {
+        self.subcommand(
+            SubCommand::with_name("entity")
+                .about("Entity facilities")
+                .setting(AppSettings::InferSubcommands)
+                .setting(AppSettings::SubcommandRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("create")
+                        .about("Create entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("meta")
+                                .value_name("Meta")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Meta information"),
+                        )
+                        .arg(
+                            Arg::with_name("body")
+                                .value_name("Body")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Body information"),
+                        )
+                        .arg(
+                            Arg::with_name("years")
+                                .value_name("Years")
+                                .takes_value(true)
+                                .index(4)
+                                .required(true)
+                                .help("Duration"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-meta")
+                        .about("Update meta information of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("meta")
+                                .value_name("Meta")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Meta information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-body")
+                        .about("Update body information of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("body")
+                                .value_name("Body")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Body information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("renew-ownership")
+                        .about("Renew ownership of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("years")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Years")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("transfer-ownership")
+                        .about("Transfer ownership of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("to")
+                                .validator(is_valid_pubkey)
+                                .value_name("To")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("The recipient address"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("sale-ask")
+                        .about("Create a sale offer for entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("enabled")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Enabled")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Enable or disable the sale offer(0 = false, 1 = true)"),
+                        )
+                        .arg(
+                            Arg::with_name("sell_price")
+                                .validator(is_amount)
+                                .value_name("Sell Price")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Sell price for entity name"),
+                        )                       
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("sale-bid")
+                        .about("Make an offer to buy for entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )                   
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("rent-ask")
+                        .about("Create a usership offer for entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("enabled")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Enabled")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Enable or disable the usership offer(0 = false, 1 = true)"),
+                        )
+                        .arg(
+                            Arg::with_name("rent_per_day")
+                                .validator(is_amount)
+                                .value_name("Rent Per Day")
+                                .takes_value(true)
+                                .index(3)
+                                .required(true)
+                                .help("Rent per day for entity name"),
+                        )                       
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("rent-bid")
+                        .about("Make an offer to buy usership for entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("days")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Days")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("update-rent")
+                        .about("Update rent information of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("rent-info")
+                                .value_name("Rent Info")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Rent information"),
+                        )
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("renew-usership")
+                        .about("Renew usership of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("days")
+                                .validator(is_parsable::<usize>)
+                                .value_name("Days")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Duration"),
+                        )                        
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("transfer-usership")
+                        .about("Transfer usership of entity")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Entity name"),
+                        )
+                        .arg(
+                            Arg::with_name("to")
+                                .validator(is_valid_pubkey)
+                                .value_name("To")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("The recipient address"),
+                        )                        
+                        .arg(owner_address_arg()),
+                ),
+        )
+    }
+}
+
+pub(crate) trait OnsSubCommand {
+    fn ons_subcommand(self) -> Self;
+}
+
+impl OnsSubCommand for App<'_, '_> {
+    fn ons_subcommand(self) -> Self {
+        self.subcommand(
+            SubCommand::with_name("uns")
+                .about("Uns facilities")
+                .setting(AppSettings::InferSubcommands)
+                .setting(AppSettings::SubcommandRequiredElseHelp)                
+                .subcommand(
+                    SubCommand::with_name("get-info")
+                        .about("Get information of uns name")
+                        .arg(
+                            Arg::with_name("name")
+                                .value_name("Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Uns name"),
+                        )                                       
+                        .arg(owner_address_arg()),
+                )
+                .subcommand(
+                    SubCommand::with_name("get-list-by-owner")
+                        .about("Get list by owner of uns name")
+                        .arg(
+                            Arg::with_name("owner_address")
+                                .value_name("Owner Address")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Owner of uns name"),
+                        )
+                        .arg(
+                            Arg::with_name("page")
+                                .value_name("Page")
+                                .takes_value(true)
+                                .index(2)
+                                .default_value("1")
+                                .required(true)
+                                .help("Page number"),
+                        )
+                        .arg(
+                            Arg::with_name("page_size")
+                                .value_name("Page Size")
+                                .takes_value(true)
+                                .index(3)
+                                .default_value("100")
+                                .required(true)
+                                .help("Page size"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("get-list-by-parent")
+                        .about("Get list by parent name of uns")
+                        .arg(
+                            Arg::with_name("parent_name")
+                                .value_name("Parent Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Parent name of uns"),
+                        )
+                        .arg(
+                            Arg::with_name("page")
+                                .value_name("Page")
+                                .takes_value(true)
+                                .index(2)
+                                .default_value("1")
+                                .required(true)
+                                .help("Page number"),
+                        )
+                        .arg(
+                            Arg::with_name("page_size")
+                                .value_name("Page size")
+                                .takes_value(true)
+                                .index(3)
+                                .default_value("100")
+                                .required(true)
+                                .help("Page size"),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("get-all-wildcard-names")
+                        .about("Get all wildcard names of uns")
+                        .arg(
+                            Arg::with_name("wildcard_name")
+                                .value_name("Wildcard Name")
+                                .takes_value(true)
+                                .index(1)
+                                .required(true)
+                                .help("Wildcard name"),
+                        )
+                        .arg(
+                            Arg::with_name("parent_name")
+                                .value_name("Parent Name")
+                                .takes_value(true)
+                                .index(2)
+                                .required(true)
+                                .help("Parent name of uns"),
+                        )
+                        .arg(
+                            Arg::with_name("page")
+                                .value_name("Page")
+                                .takes_value(true)
+                                .index(3)
+                                .default_value("1")
+                                .required(true)
+                                .help("Page number"),
+                        )
+                        .arg(
+                            Arg::with_name("page_size")
+                                .value_name("Page size")
+                                .takes_value(true)
+                                .index(4)
+                                .default_value("100")
+                                .required(true)
+                                .help("Page size"),
+                        ),
+                ),
+        )
+    }
+}
+
 pub fn app<'a, 'b>(
     default_decimals: &'a str,
     minimum_signers_help: &'b str,
@@ -723,8 +1453,11 @@ pub fn app<'a, 'b>(
                 .hidden(true)
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
-        .bench_subcommand()
+        .bench_subcommand()        
         .voucher_subcommand()
+        .ecosystem_subcommand()
+        .entity_subcommand()
+        .ons_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")

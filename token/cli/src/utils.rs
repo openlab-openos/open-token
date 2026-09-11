@@ -14,7 +14,7 @@ use {
     },
     tokio::time::sleep,
 };
-pub const ONS_PROGRAM_ID: &str = "on6LJ2wZa2jRAdnouvPtkAxLtZfVr9y8J7dMLgeDWLg";
+pub const ONS_PROGRAM_ID: &str = "unA7bKE4THUFJ4ECJrLKgiRUyc8vWXqRcMKckgWe287";
 pub const ONS_API_URL: &str = "http://192.168.204.128:5056";
 pub const VOUCHER_PROGRAM_ID: &str = "votV1qo18w3JMKX8wUAmgvdAy2dDXVc9cLUy6x5XwsQ";
 pub const TOKEN2022_PROGRAM_ID: &str = "Token9ADbPtdFC3PjxaohBLGw2pgZwofdcbj6Lyaw6c";
@@ -35,8 +35,8 @@ pub fn find_pda(seeds: &[&[u8]], program_id: &Pubkey) -> (Pubkey, u8) {
 #[derive(serde::Deserialize)]
 pub struct TreasuryConfig {
     pub fee_receiver: String,
-    pub fee_shortname: u64,
-    pub fee_longname: u64,
+    pub cycle_fees: u64,
+    pub protocol_fees: u64,
 }
 
 #[derive(serde::Deserialize)]
@@ -48,10 +48,7 @@ pub struct VoucherTreasuryConfig {
 #[derive(serde::Deserialize, Clone)]
 pub struct MetaConfig {
     pub fee_receiver: String,
-    pub fee_shortname: u64,
-    pub fee_longname: u64,
-    pub basis_points_sell: u64,
-    pub basis_points_rent: u64,
+    pub cycle_fees: u64,
     #[serde(default)] 
     pub pay_token: Option<String>,
 }

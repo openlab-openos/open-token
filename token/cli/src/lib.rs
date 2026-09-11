@@ -1,5 +1,8 @@
 mod bench;
+mod entity;
 mod voucher;
+mod eco;
+mod ons;
 pub mod clap_app;
 pub mod command;
 pub mod config;

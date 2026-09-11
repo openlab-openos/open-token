@@ -2,7 +2,10 @@
 use {
     crate::{
         bench::*,
+        eco::*,
+        entity::*,
         voucher::*,
+        ons::*,
         clap_app::*,
         config::{Config, MintInfo},
         encryption_keypair::*,
@@ -3413,6 +3416,33 @@ pub async fn process_command<'a>(
             )
             .await
         }
+        (CommandName::Ecosystem, arg_matches) => {
+            eco_process_command(
+                arg_matches,
+                config,
+                std::mem::take(&mut bulk_signers),
+                &mut wallet_manager,
+            )
+            .await
+        }
+        (CommandName::Entity, arg_matches) => {
+            entity_process_command(
+                arg_matches,
+                config,
+                std::mem::take(&mut bulk_signers),
+                &mut wallet_manager,
+            )
+            .await
+        }
+        (CommandName::Ons, arg_matches) => {
+            ons_process_command(
+                arg_matches,
+                config,
+                std::mem::take(&mut bulk_signers),
+                &mut wallet_manager,
+            )
+            .await
+        }
         (CommandName::CreateToken, arg_matches) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
@@ -4516,7 +4546,7 @@ pub async fn process_command<'a>(
                 &aes_key,
             )
             .await
-        }
+        }        
     }
 }
 
